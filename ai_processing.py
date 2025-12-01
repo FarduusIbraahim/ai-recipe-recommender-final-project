@@ -3,16 +3,28 @@ import os
 import json 
 from google import genai
 from google.genai import types
+import streamlit as st # Import streamlit to access st.secrets
 
 # --- 1. Initialize the Client ---
+client = None
 try:
-    client = genai.Client()
+    # Check if running on Streamlit Cloud and the secret is set
+    if 'GEMINI_API_KEY' in st.secrets:
+        # Use the key from Streamlit's secrets
+        client = genai.Client(api_key=st.secrets['GEMINI_API_KEY'])
+    elif os.getenv('GEMINI_API_KEY'):
+        # Fallback for local testing (if key is in environment variables)
+        client = genai.Client()
+    else:
+        print("Error: Gemini API key not found in environment or Streamlit secrets.")
+        
 except Exception as e:
     print(f"Error initializing Gemini client: {e}")
     client = None
 
-# --- 2. AI STEP 1: IDENTIFY INGREDIENTS ---
+# --- 2. AI STEP 1: IDENTIFY INGREDIENTS (Multimodal Prompt with Failure Check) ---
 def identify_ingredients(uploaded_file):
+    # This check now relies on the global 'client' variable set above
     if not client: return "Error: AI client not initialized."
     
     image_bytes = uploaded_file.getvalue()
@@ -59,7 +71,6 @@ def generate_recipe(ingredient_list_str, cuisine, max_time, dietary_filters):
     * **Max Prep Time:** {max_time} minutes.
     """
 
-    # PROMPT: Requesting a narration_script key
     prompt = f"""
     You are a professional, creative recipe developer. Your task is to generate one unique,
     easy-to-follow recipe using ONLY the ingredients listed below.
@@ -85,12 +96,10 @@ def generate_recipe(ingredient_list_str, cuisine, max_time, dietary_filters):
         return '{"error": "Recipe generation failed due to API error."}'
 
 
-# --- 4. MOCK AI STEP 3: VIDEO GENERATION (USING A REAL, VALID YOUTUBE LINK) ---
+# --- 4. MOCK AI STEP 3: VIDEO GENERATION ---
 def generate_recipe_video(recipe_title, narration_script):
     """
     Returns a real YouTube URL that will correctly load and play for demonstration.
-    This simulates the output of a Text-to-Video API.
     """
-    # Using a real, valid URL that plays correctly: a short, general cooking clip.
-    valid_youtube_url = "https://www.youtube.com/watch?v=aopS3q6f1GY"
+    valid_youtube_url = "https://www.youtube.com/watch?v=kY3NfQGz29Q"
     return valid_youtube_url
