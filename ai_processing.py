@@ -3,26 +3,37 @@ import os
 import json 
 from google import genai
 from google.genai import types
-import streamlit as st # Import streamlit to access st.secrets
+import streamlit as st # Import streamlit for st.secrets access
 
-# --- 1. GLOBAL CLIENT REMOVED: NO GLOBAL INITIALIZATION ---
-# The client is now initialized inside the functions below to ensure the
-# Streamlit secret is available at runtime.
-
-# --- 2. AI STEP 1: IDENTIFY INGREDIENTS (LAZY INITIALIZATION) ---
-def identify_ingredients(uploaded_file):
+# --- Helper Function for Reliable Key Retrieval ---
+def get_gemini_api_key():
+    """Tries to get the API key from multiple sources for reliability."""
     try:
-        # LAZY INITIALIZATION: Create the client right before use
-        # This guarantees st.secrets is ready.
-        client = genai.Client(api_key=st.secrets['GEMINI_API_KEY']) 
-    except Exception as e:
-        # If the key is missing or invalid, fail cleanly
-        print(f"Error during client initialization: {e}")
-        return "Error: AI client not initialized."
-    
-    # Check if the key is empty just in case
-    if not st.secrets.get('GEMINI_API_KEY'):
+        # 1. Try Streamlit Secrets (Best Practice Source)
+        key = st.secrets['GEMINI_API_KEY']
+        if key:
+            return key
+    except Exception:
+        # 2. Fallback: Try OS Environment Variable (For local testing)
+        key = os.getenv('GEMINI_API_KEY')
+        if key:
+            return key
+            
+    # If both fail, the key is genuinely missing
+    return None
+
+# --- 2. AI STEP 1: IDENTIFY INGREDIENTS (DIRECT KEY INJECTION) ---
+def identify_ingredients(uploaded_file):
+    api_key = get_gemini_api_key()
+    if not api_key:
         return "Error: Gemini API key is missing from Streamlit secrets."
+    
+    try:
+        # LAZY INITIALIZATION: Inject the key directly
+        client = genai.Client(api_key=api_key) 
+    except Exception as e:
+        print(f"Error during client initialization: {e}")
+        return "Error: AI client failed to initialize with key."
 
     image_bytes = uploaded_file.getvalue()
     
@@ -54,14 +65,18 @@ def identify_ingredients(uploaded_file):
         print(f"Error during ingredient identification: {e}")
         return f"Error during API call: {e}"
 
-# --- 3. AI STEP 2 & SCRIPT GENERATION: GENERATE RECIPE (LAZY INITIALIZATION) ---
+# --- 3. AI STEP 2 & SCRIPT GENERATION: GENERATE RECIPE (DIRECT KEY INJECTION) ---
 def generate_recipe(ingredient_list_str, cuisine, max_time, dietary_filters):
-    # LAZY INITIALIZATION: Create the client right before use
+    api_key = get_gemini_api_key()
+    if not api_key:
+        return '{"error": "AI client not initialized."}'
+        
     try:
-        client = genai.Client(api_key=st.secrets['GEMINI_API_KEY']) 
+        client = genai.Client(api_key=api_key) 
     except Exception as e:
         print(f"Error during client initialization: {e}")
-        return '{"error": "AI client not initialized."}'
+        return '{"error": "AI client failed to initialize with key."}'
+
 
     if "FAILURE: NO FOOD DETECTED" in ingredient_list_str:
         return '{"error": "Ingredient identification failed. No food was detected in the image."}'
