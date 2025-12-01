@@ -3,33 +3,23 @@ import os
 import json 
 from google import genai
 from google.genai import types
-import streamlit as st # Import streamlit for st.secrets access
+# import streamlit as st is removed here to prevent conflicts
 
 # --- Helper Function for Reliable Key Retrieval ---
 def get_gemini_api_key():
-    """Tries to get the API key from multiple sources for reliability."""
-    try:
-        # 1. Try Streamlit Secrets (Best Practice Source)
-        key = st.secrets['GEMINI_API_KEY']
-        if key:
-            return key
-    except Exception:
-        # 2. Fallback: Try OS Environment Variable (For local testing)
-        key = os.getenv('GEMINI_API_KEY')
-        if key:
-            return key
-            
-    # If both fail, the key is genuinely missing
-    return None
+    """Tries to get the API key from the standard OS Environment."""
+    # We now ONLY check the operating system's environment variable
+    return os.getenv('GEMINI_API_KEY')
 
-# --- 2. AI STEP 1: IDENTIFY INGREDIENTS (DIRECT KEY INJECTION) ---
+# --- 2. AI STEP 1: IDENTIFY INGREDIENTS (DIRECT OS ENV INJECTION) ---
 def identify_ingredients(uploaded_file):
     api_key = get_gemini_api_key()
     if not api_key:
-        return "Error: Gemini API key is missing from Streamlit secrets."
+        # User-facing error message now confirms the key is missing from the environment
+        return "Error: Gemini API key is missing from the environment variables."
     
     try:
-        # LAZY INITIALIZATION: Inject the key directly
+        # Inject the key directly from the environment
         client = genai.Client(api_key=api_key) 
     except Exception as e:
         print(f"Error during client initialization: {e}")
@@ -65,7 +55,7 @@ def identify_ingredients(uploaded_file):
         print(f"Error during ingredient identification: {e}")
         return f"Error during API call: {e}"
 
-# --- 3. AI STEP 2 & SCRIPT GENERATION: GENERATE RECIPE (DIRECT KEY INJECTION) ---
+# --- 3. AI STEP 2 & SCRIPT GENERATION: GENERATE RECIPE (DIRECT OS ENV INJECTION) ---
 def generate_recipe(ingredient_list_str, cuisine, max_time, dietary_filters):
     api_key = get_gemini_api_key()
     if not api_key:
@@ -118,5 +108,5 @@ def generate_recipe_video(recipe_title, narration_script):
     """
     Returns a real YouTube URL that will correctly load and play for demonstration.
     """
-    valid_youtube_url = "https://www.youtube.com/watch?v=kY3NfQGz29Q"
+    valid_youtube_url = "https://www.youtube.com/watch?v=aopS3q6f1GY&t=3s"
     return valid_youtube_url
